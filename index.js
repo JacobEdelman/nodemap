@@ -1,50 +1,52 @@
 var c = require('cheerio');
 var r = require('request');
+var p = require('path');
+var u = require('url');
 
-var url = 'http://' + process.argv[process.argv.length - 1];
+var url = process.argv[process.argv.length - 1];
 
 var url_array = [];
 
 var map = function(loc) {
+
+	//taking out GET arguments
 	var loc_no_arg = loc.split('?')[0];
-	var terminal_file = false;
-	console.log(loc);
-	if(loc_no_arg.slice(-1)!='/') {
-		console.log("aa");
-		var loc_no_proto = loc_no_arg.substring(7);
-		var path_array = loc_no_proto.split('/');
-		if((path_array[path_array.length - 1].indexOf('.') === -1)||(path_array.length == 1)) {
-			loc_no_arg += '/';
-			console.log("aaa");
-		} else {
-			terminal_file = true;
-			console.log("aaaa");
-		}
+	var terminal_file = true;
+	console.log(loc_no_arg);
+	var path_array = loc_no_arg.split('/');
+	var ext_test_in = path_array[path_array.length - 1];
+	var ext_test = p.extname(ext_test_in);
+	if((ext_test == "") && (path_array.length != 1)) {
+		terminal_file = false;
 	}
-	url_array[url_array.length] = loc_no_arg;
-	r(loc_no_arg, function(err, resp, body) {
+	
+	
+	r('http://'+loc_no_arg, function(err, resp, body) {
 		if (err) {
-			console.log("aaaaa");
+			console.log("down");
 			throw err;
 		}
 		var $ = c.load(body);
 		$('a').each(function(i,ele) {
-			
+			var target_loc = $(this).attr('href');
 			//insert data organization code here
-			console.log($(this).attr('href'));
-			
-			
-			var next_loc = loc_no_arg + $(this).attr('href');
+			console.log(target_loc);
 			var not_duplicate = true;
+			var next_loc;
+			var next_loc_obj = u.parse(target_loc, false, true);
+			if(next_loc_obj.hostname == null) {
+			console.log(next_loc_obj.hostname);
+				next_loc = u.resolve(loc_no_arg, target_loc);
+			} else {
+				not_duplicate = false;
+			}
 			for(var i=0;i<url_array.length;i++) {
 				if(url_array[i]==next_loc) {
 					not_duplicate = false;
-					console.log("b");
 				}
 			}
 			if(not_duplicate) {
 				map(next_loc);
-				console.log(next_loc);
 			}
 		});
 	});
