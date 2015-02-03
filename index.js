@@ -2,8 +2,13 @@ var c = require('cheerio');
 var r = require('request');
 var p = require('path');
 var u = require('url');
+var f = require('flow');
 
 var url = process.argv[process.argv.length - 1];
+
+if(url.slice(-1) != '/') {
+	url += '/';
+}
 
 var url_array = [];
 
@@ -11,43 +16,47 @@ var map = function(loc) {
 
 	//taking out GET arguments
 	var loc_no_arg = loc.split('?')[0];
-	var terminal_file = true;
-	console.log(loc_no_arg);
-	var path_array = loc_no_arg.split('/');
-	var ext_test_in = path_array[path_array.length - 1];
-	var ext_test = p.extname(ext_test_in);
-	if((ext_test == "") && (path_array.length != 1)) {
-		terminal_file = false;
-	}
 	
-	
-	r('http://'+loc_no_arg, function(err, resp, body) {
+	r(loc_no_arg, function(err, resp, body) {
 		if (err) {
 			console.log("down");
 			throw err;
 		}
 		var $ = c.load(body);
 		$('a').each(function(i,ele) {
-			var target_loc = $(this).attr('href');
-			//insert data organization code here
-			console.log(target_loc);
-			var not_duplicate = true;
+			var target_loc;
+			var not_duplicate;
 			var next_loc;
-			var next_loc_obj = u.parse(target_loc, false, true);
-			if(next_loc_obj.hostname == null) {
-			console.log(next_loc_obj.hostname);
-				next_loc = u.resolve(loc_no_arg, target_loc);
-			} else {
-				not_duplicate = false;
-			}
-			for(var i=0;i<url_array.length;i++) {
-				if(url_array[i]==next_loc) {
-					not_duplicate = false;
+			var next_loc_obj;
+			f.exec(
+				function() { target_loc = $(this).attr('href'); },
+				function(err) { if (err) throw err; console.log(target_loc); console.log("aasdasddddddd"); },
+				function(err) { if (err) throw err; console.log("asd"); not_duplicate = true; },
+				function(err) { if (err) throw err; next_loc_obj = u.parse(target_loc, false, true); },
+				function(err) {
+					if (err) throw err;
+					if(next_loc_obj.hostname == null) {
+						next_loc = u.resolve(loc_no_arg, target_loc);
+						console.log("asdsad"+loc_no_arg+"asd");
+					} else {
+						not_duplicate = false;
+					}
+				},
+				function(err) {
+					if (err) throw err;
+					for(var i=0; i<url_array.length; i++) {
+						if(url_array[i]==next_loc) {
+							not_duplicate = false;
+						}
+					}
+				},
+				function(err) {
+					if (err) throw err;
+					if(not_duplicate) {
+						url_array[url_array.length] = next_loc;
+					}
 				}
-			}
-			if(not_duplicate) {
-				map(next_loc);
-			}
+			);
 		});
 	});
 };
